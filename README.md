@@ -1,58 +1,159 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Weather API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel REST API for fetching and displaying weather data by city, powered by the OpenWeatherMap API.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2 + Laravel 11
+- MySQL 8
+- Nginx
+- Docker & Docker Compose
+- Laravel Sanctum (authentication)
+- L5-Swagger (API documentation)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Running Locally
 
-## Learning Laravel
+### Prerequisites
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- [Docker](https://www.docker.com/products/docker-desktop) and Docker Compose
+- [Git](https://git-scm.com/)
+- OpenWeatherMap API key — free at [openweathermap.org](https://openweathermap.org/api)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Clone the repository
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/smujacic/weather-api.git
+cd weather-api
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Set up environment variables
 
-## Contributing
+```bash
+cp .env.example .env
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Open `.env` and set the following:
 
-## Code of Conduct
+```env
+APP_URL=http://localhost:8080
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=weatherdb
+DB_USERNAME=weather
+DB_PASSWORD=weather
 
-## Security Vulnerabilities
+OPENWEATHER_API_KEY=your_api_key_here
+OPENWEATHER_BASE_URL=https://api.openweathermap.org/data/2.5
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 3. Start Docker containers
 
-## License
+```bash
+docker compose up -d
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 4. Install PHP dependencies
+
+```bash
+docker compose exec php composer install
+```
+
+### 5. Generate application key
+
+```bash
+docker compose exec php php artisan key:generate
+```
+
+### 6. Run migrations and seeders
+
+```bash
+docker compose exec php php artisan migrate --seed
+```
+
+### 7. Start the queue worker (for weather fetching)
+
+```bash
+docker compose exec php php artisan queue:work
+```
+
+> The scheduler that fetches weather data every 10 minutes starts automatically in the `scheduler` container.
+
+---
+
+## Accessing the Application
+
+| Service | URL |
+|---|---|
+| API | http://localhost:8080/api |
+| Swagger documentation | http://localhost:8080/api/documentation |
+
+---
+
+## API Authentication
+
+The API uses Bearer token authentication via Laravel Sanctum.
+
+**Login:**
+```bash
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "Password123!"}'
+```
+
+Use the token from the response in the Authorization header:
+```
+Authorization: Bearer {token}
+```
+
+---
+
+## Available Endpoints
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/api/login` | Login | ❌ |
+| POST | `/api/logout` | Logout | ✅ |
+| GET | `/api/weather` | All weather data (paginated) | ✅ |
+| GET | `/api/weather/search?city=Zagreb` | Search by city (last 24h) | ✅ |
+| GET | `/api/cities` | List cities | ✅ |
+| POST | `/api/cities` | Add a city | ✅ |
+| GET | `/api/cities/{id}` | Get a city | ✅ |
+| PUT | `/api/cities/{id}` | Update a city | ✅ |
+| DELETE | `/api/cities/{id}` | Delete a city | ✅ |
+| GET | `/api/users` | List users | ✅ |
+| POST | `/api/users` | Create a user | ✅ |
+| GET | `/api/users/{id}` | Get a user | ✅ |
+| PUT | `/api/users/{id}` | Update a user | ✅ |
+| DELETE | `/api/users/{id}` | Delete a user | ✅ |
+
+Full interactive documentation is available at **/api/documentation**.
+
+---
+
+## Generating Swagger Documentation
+
+```bash
+docker compose exec php php artisan l5-swagger:generate
+```
+
+---
+
+## Useful Docker Commands
+
+```bash
+# Stop containers
+docker compose down
+
+# Reset the database
+docker compose exec php php artisan migrate:fresh --seed
+
+# View logs
+docker compose logs -f
+
+# Enter the PHP container
+docker compose exec php bash
+```
