@@ -17,6 +17,6 @@ Route::middleware('auth:sanctum')->group(function() {
     Route::post('/logout', [AuthController::class,  'logout']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('cities', CityController::class);
-    Route::apiResource('weather', WeatherController::class);
     Route::get('/weather/search', [WeatherController::class, 'search']);
+    Route::apiResource('weather', WeatherController::class)->only(['index']);
 });

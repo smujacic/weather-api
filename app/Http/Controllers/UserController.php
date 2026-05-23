@@ -13,14 +13,19 @@ class UserController extends Controller
         summary: 'Get all users',
         tags: ['User'],
         security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20), description: 'Number of results per page'),
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1), description: 'Page number'),
+        ],
         responses: [
             new OA\Response(response: 200, description: 'List of users'),
             new OA\Response(response: 401, description: 'Unauthenticated'),
         ]
     )]
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(User::all());
+        $perPage = $request->input('per_page', 20); 
+        return response()->json(User::paginate($perPage));
     }
 
     #[OA\Post(

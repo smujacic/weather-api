@@ -15,7 +15,8 @@ class WeatherController extends Controller
         tags: ['Weather'],
         security: [['bearerAuth' => []]],
         parameters: [
-            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20), description: 'Number of results per page')
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20), description: 'Number of results per page'),
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1), description: 'Page number'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'List of weather data'),
@@ -24,7 +25,10 @@ class WeatherController extends Controller
     )]
     public function index(Request $request)
     {
-       return [];
+        $perPage = $request->input('per_page', 20);   
+        $weather = Weather::with('city')->latest('fetched_at')->paginate($perPage);
+
+        return WeatherResource::collection($weather);
     }
 
 
@@ -35,6 +39,8 @@ class WeatherController extends Controller
         security: [['bearerAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'city', in: 'query', required: true, schema: new OA\Schema(type: 'string'), example: 'Zagreb'),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20), description: 'Number of results per page'),
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1), description: 'Page number'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'Weather data for city in last 24h'),
@@ -43,7 +49,23 @@ class WeatherController extends Controller
     )]
     public function search(Request $request)
     {
-        return [];
+        $request->validate([
+            'city' => 'required|string|min:3',
+        ]);
+
+        $perPage = $request->input('per_page', 20); 
+
+        $weather = Weather::with('city')
+            ->whereHas('city', fn($q) => $q->where('name', 'like', '%' . $request->city . '%'))
+            ->where('fetched_at', '>=', now()->subHours(24))
+            ->latest('fetched_at')
+            ->paginate($perPage);
+
+        if ($weather->total() === 0) {
+            return response()->json(['message' => 'No weather data found for this city in the last 24 hours'], 404);
+        }
+
+        return WeatherResource::collection($weather);
     }
 
 }
